@@ -1,0 +1,7 @@
+# Control panel, mock systems of record, codec server. No worker here, so the
+# worker can be killed and restarted without taking the panel down.
+spring:
+  temporal:
+    start-workers: false
+server:
+  port: 8080

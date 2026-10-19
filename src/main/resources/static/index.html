@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Member enrollment demo</title>
+<style>
+  :root {
+    --ink: #1c2a30;
+    --muted: #5d6b72;
+    --paper: #f5f7f6;
+    --panel: #ffffff;
+    --line: #d5dcdf;
+    --teal: #0e6a6a;
+    --teal-soft: #dcefee;
+    --amber: #a85d00;
+    --amber-soft: #fbecd2;
+    --red: #b3261e;
+    --red-soft: #f9dedc;
+    --green: #2b7a4b;
+    --green-soft: #dcf0e3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 20px;
+    padding: 20px 28px 12px;
+  }
+  h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); }
+  .badge {
+    margin-left: auto; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    background: var(--amber-soft); color: var(--amber);
+  }
+  .badge.on { background: var(--green-soft); color: var(--green); }
+  main {
+    display: grid; grid-template-columns: minmax(280px, 340px) 1fr; gap: 20px;
+    padding: 8px 28px 40px; align-items: start;
+  }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+  h2 { margin: 0 0 4px; font-size: 16px; }
+  .hint { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+  .system { padding: 10px 0; border-top: 1px solid var(--line); }
+  .system:first-of-type { border-top: 0; }
+  .system-name { font-weight: 600; margin-bottom: 6px; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button {
+    flex: 1; padding: 6px 4px; border: 0; border-left: 1px solid var(--line); background: #fff;
+    font: inherit; font-size: 13px; color: var(--ink); cursor: pointer;
+  }
+  .seg button:first-child { border-left: 0; }
+  .seg button[aria-pressed="true"] { background: var(--teal); color: #fff; font-weight: 600; }
+  .seg button[aria-pressed="true"].bad { background: var(--red); }
+  .seg button[aria-pressed="true"].warn { background: var(--amber); }
+  button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #5aa9a9; outline-offset: 2px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  select, .primary {
+    font: inherit; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: #fff; color: var(--ink);
+  }
+  .primary { background: var(--teal); border-color: var(--teal); color: #fff; font-weight: 600; cursor: pointer; }
+  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-top: 12px; }
+  .card-head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+  .ref { font-weight: 650; font-variant-numeric: tabular-nums; }
+  .card-head a { color: var(--teal); font-size: 13px; margin-left: auto; }
+  .track { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 12px 0 8px; }
+  .node {
+    padding: 8px 6px; border-radius: 6px; border: 1px solid var(--line); text-align: center; font-size: 13px; color: var(--muted);
+  }
+  .node.done { background: var(--green-soft); border-color: #b9dfc7; color: var(--green); font-weight: 600; }
+  .node.active { background: var(--teal-soft); border-color: #a7d3d1; color: var(--teal); font-weight: 650; }
+  .node.retry { background: var(--amber-soft); border-color: #efd3a0; color: var(--amber); font-weight: 650; }
+  .node.undone { background: var(--red-soft); border-color: #efbab6; color: var(--red); text-decoration: line-through; }
+  .line { font-size: 14px; }
+  .line.ok { color: var(--green); font-weight: 600; }
+  .line.warn { color: var(--amber); font-weight: 600; }
+  .line.bad { color: var(--red); font-weight: 600; }
+  .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Member enrollment</h1>
+  <span class="sub">Writes to the systems of record, run by Temporal</span>
+  <span id="enc" class="badge">Payloads: plain text</span>
+</header>
+
+<main>
+  <section aria-labelledby="sys-h">
+    <h2 id="sys-h">Systems of record</h2>
+    <p class="hint">Change a system while enrollments are running. The workflow code does not change.</p>
+    <div id="systems"></div>
+  </section>
+
+  <section aria-labelledby="enr-h">
+    <h2 id="enr-h">Enrollments</h2>
+    <p class="hint">Each enrollment is one Temporal workflow. Open it in the Temporal UI to see the event history.</p>
+    <div class="toolbar">
+      <label for="scenario" class="sub">Scenario</label>
+      <select id="scenario">
+        <option value="STANDARD">Standard</option>
+        <option value="BUG">Workflow bug (fix and restart worker)</option>
+      </select>
+      <button id="start" class="primary" type="button">Enroll member</button>
+    </div>
+    <div id="list"><div class="empty">No enrollments yet. Select Enroll member to start one.</div></div>
+  </section>
+</main>
+
+<script>
+const STEPS = ["Eligibility", "Billing", "ID Card", "Welcome Kit"];
+const SYSTEMS = [
+  { id: "eligibility", name: "Eligibility" },
+  { id: "billing", name: "Billing" },
+  { id: "fulfillment", name: "ID card vendor" },
+  { id: "notifications", name: "Notifications" }
+];
+const MODES = [
+  { id: "OK", label: "Healthy", cls: "" },
+  { id: "FLAKY", label: "Flaky", cls: "warn" },
+  { id: "DOWN", label: "Down", cls: "bad" },
+  { id: "REJECT", label: "Rejecting", cls: "bad" }
+];
+
+let config = { temporalUiBase: "", encrypted: false };
+let modes = {};
+const enrollments = []; // newest first: { workflowId, memberRef, data }
+
+async function api(path, options) {
+  const res = await fetch(path, options);
+  if (!res.ok) throw new Error(path + " returned " + res.status);
+  return res.json();
+}
+
+function renderSystems() {
+  const root = document.getElementById("systems");
+  root.innerHTML = "";
+  SYSTEMS.forEach(s => {
+    const wrap = document.createElement("div");
+    wrap.className = "system";
+    const name = document.createElement("div");
+    name.className = "system-name";
+    name.textContent = s.name;
+    const seg = document.createElement("div");
+    seg.className = "seg";
+    seg.setAttribute("role", "group");
+    seg.setAttribute("aria-label", s.name + " behavior");
+    MODES.forEach(m => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = m.label;
+      b.className = m.cls;
+      b.setAttribute("aria-pressed", String(modes[s.id] === m.id));
+      b.addEventListener("click", async () => {
+        modes = await api("/api/systems/" + s.id + "?mode=" + m.id, { method: "PUT" });
+        renderSystems();
+      });
+      seg.appendChild(b);
+    });
+    wrap.append(name, seg);
+    root.appendChild(wrap);
+  });
+}
+
+function describe(d) {
+  const pending = d.pendingActivities || [];
+  const retrying = pending.find(p => p.attempt > 1);
+  if (d.status === "COMPLETED") return { cls: "ok", text: "Enrolled in all systems" };
+  if (d.status === "FAILED") return { cls: "bad", text: "Rejected. Earlier writes were rolled back." };
+  if (d.status !== "RUNNING") return { cls: "warn", text: d.status.toLowerCase() };
+  if (d.workflowTaskAttempt > 1) {
+    return { cls: "bad", text: "Workflow code is failing (attempt " + d.workflowTaskAttempt + "). Fix it and restart the worker." };
+  }
+  if (d.step === "Rollback") return { cls: "warn", text: "Rolling back earlier writes" };
+  if (retrying) return { cls: "warn", text: "Retrying " + retrying.activity + ", attempt " + retrying.attempt };
+  if (pending.some(p => p.attempt === 1 && p.state === "PENDING_ACTIVITY_STATE_SCHEDULED")) {
+    return { cls: "warn", text: "Waiting for a worker to pick this up" };
+  }
+  return { cls: "", text: "In progress" };
+}
+
+function nodeClass(i, d) {
+  const idx = STEPS.indexOf(d.step);
+  const retrying = (d.pendingActivities || []).some(p => p.attempt > 1);
+  if (d.status === "COMPLETED") return "node done";
+  if (d.status === "FAILED") return "node undone";
+  if (d.step === "Rollback") return "node undone";
+  if (idx < 0) return "node";
+  if (i < idx) return "node done";
+  if (i === idx) return retrying ? "node retry" : "node active";
+  return "node";
+}
+
+function renderList() {
+  const root = document.getElementById("list");
+  if (enrollments.length === 0) return;
+  root.innerHTML = "";
+  enrollments.forEach(e => {
+    const d = e.data || { status: "RUNNING", step: "", pendingActivities: [], workflowTaskAttempt: 0, historyLength: 0 };
+    const info = describe(d);
+    const card = document.createElement("div");
+    card.className = "card";
+
+    const head = document.createElement("div");
+    head.className = "card-head";
+    const ref = document.createElement("span");
+    ref.className = "ref";
+    ref.textContent = e.memberRef;
+    const link = document.createElement("a");
+    link.href = config.temporalUiBase + encodeURIComponent(e.workflowId);
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = "Open in Temporal UI";
+    head.append(ref, link);
+
+    const track = document.createElement("div");
+    track.className = "track";
+    STEPS.forEach((s, i) => {
+      const n = document.createElement("div");
+      n.className = nodeClass(i, d);
+      n.textContent = s;
+      track.appendChild(n);
+    });
+
+    const line = document.createElement("div");
+    line.className = "line " + info.cls;
+    line.textContent = info.text;
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = e.workflowId + "  |  history events: " + (d.historyLength || 0);
+
+    card.append(head, track, line, meta);
+    root.appendChild(card);
+  });
+}
+
+async function poll() {
+  const active = enrollments.filter(e => !e.data || e.data.status === "RUNNING");
+  await Promise.all(active.map(async e => {
+    try {
+      e.data = await api("/api/enrollments/" + encodeURIComponent(e.workflowId));
+    } catch (err) { /* workflow may not be visible yet */ }
+  }));
+  if (active.length) renderList();
+}
+
+document.getElementById("start").addEventListener("click", async () => {
+  const scenario = document.getElementById("scenario").value;
+  const res = await api("/api/enrollments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ scenario })
+  });
+  enrollments.unshift({ workflowId: res.workflowId, memberRef: res.memberRef, data: null });
+  renderList();
+});
+
+(async function init() {
+  config = await api("/api/config");
+  modes = await api("/api/systems");
+  const enc = document.getElementById("enc");
+  if (config.encrypted) {
+    enc.textContent = "Payloads: encrypted";
+    enc.classList.add("on");
+  }
+  renderSystems();
+  setInterval(poll, 1000);
+})();
+</script>
+</body>
+</html>

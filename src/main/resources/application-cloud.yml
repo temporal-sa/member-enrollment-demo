@@ -1,0 +1,11 @@
+# Add as a second profile, for example: --spring.profiles.active=worker,cloud
+# Set TEMPORAL_ADDRESS (<namespace>.<accountId>.tmprl.cloud:7233) and
+# TEMPORAL_NAMESPACE (<namespace>.<accountId>).
+spring:
+  temporal:
+    connection:
+      mtls:
+        key-file: ${TEMPORAL_KEY_PATH}
+        cert-chain-file: ${TEMPORAL_CERT_PATH}
+      # If your starter version supports API keys, use that instead of mTLS.
+      # Check the Spring Boot integration page in the Temporal docs for the property name.

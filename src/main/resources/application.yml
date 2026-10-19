@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: member-enrollment-demo
+  temporal:
+    namespace: ${TEMPORAL_NAMESPACE:default}
+    connection:
+      target: ${TEMPORAL_ADDRESS:localhost:7233}
+    workers-auto-discovery:
+      packages: com.example.enrollment
+
+enrollment:
+  # Encrypt payloads with the AES-GCM codec. Set the same value on BOTH processes.
+  encrypt: ${ENCRYPT_PAYLOADS:false}
+  # Where the worker finds the mock systems of record (the api process).
+  systems-base-url: ${SYSTEMS_BASE_URL:http://localhost:8080}
+  # Prefix for the "Open in Temporal UI" links in the control panel.
+  temporal-ui-base: ${TEMPORAL_UI_BASE:http://localhost:8233/namespaces/default/workflows/}
+  codec:
+    key-id: ${CODEC_KEY_ID:demo-1}
+    # 32 characters = AES-256. Demo value only. Real deployments read this from a vault.
+    key: ${CODEC_KEY:enroll-demo-key-0123456789abcdef}
+    # Turn on when the Temporal UI is set to pass the user access token.
+    require-auth: ${CODEC_REQUIRE_AUTH:false}
